@@ -4,21 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>CodeHost – Deploy HTML Instantly | Free HTML Hosting</title>
-    <meta name="description" content="Deploy your HTML/CSS/JS code instantly and get a live link. Free HTML hosting with expiration options. Share your web projects in seconds.">
-    <meta name="keywords" content="HTML hosting, code deploy, live link, free hosting, web hosting, instant deploy, code sharing">
+    <meta name="description" content="Deploy your HTML/CSS/JS code instantly and get a live link. Free HTML hosting with expiration options.">
+    <meta name="keywords" content="HTML hosting, code deploy, live link, free hosting, web hosting, instant deploy">
     <meta name="author" content="Mr. Arslan">
     <meta name="robots" content="index, follow">
     
-    <!-- Google Fonts + Tailwind CSS -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', sans-serif;
@@ -89,14 +84,8 @@
         }
         
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
+            from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         
         .modal-overlay {
@@ -113,9 +102,7 @@
             justify-content: center;
         }
         
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
         
         .modal-content {
             background: #1e1e2e;
@@ -137,28 +124,55 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .admin-table tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+        .admin-table tr:hover { background: rgba(255, 255, 255, 0.05); }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 10px; }
+        
+        /* PREVIEW FRAME STYLES - CLEAN ISOLATION */
+        .preview-frame {
+            width: 100%;
+            height: 100vh;
+            border: none;
+            background: white;
         }
         
-        ::-webkit-scrollbar {
-            width: 6px;
+        .preview-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2000;
+            background: white;
+            display: none;
         }
         
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
+        .preview-container.active {
+            display: block;
         }
         
-        ::-webkit-scrollbar-thumb {
-            background: #8b5cf6;
-            border-radius: 10px;
+        .preview-header {
+            background: #1e1e2e;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
         }
         
-        .result-link {
-            word-break: break-all;
-            font-family: monospace;
-            font-size: 0.85rem;
+        .preview-header a {
+            color: #8b5cf6;
+            text-decoration: none;
+        }
+        
+        .close-preview {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -271,11 +285,19 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="text-center text-gray-500 text-sm">
             <p>✨ Secure • Fast • Free • No Signup Required ✨</p>
             <p class="mt-2 text-xs">Created by <span class="text-purple-400">Mr. Arslan</span></p>
         </div>
+    </div>
+
+    <!-- Preview Container (IFRAME for full isolation) -->
+    <div id="previewContainer" class="preview-container">
+        <div class="preview-header">
+            <a href="#" id="previewLink" target="_blank">🔗 Open in New Tab</a>
+            <button class="close-preview" onclick="closePreview()">✕</button>
+        </div>
+        <iframe id="previewFrame" class="preview-frame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"></iframe>
     </div>
 
     <!-- Admin Modal -->
@@ -299,35 +321,21 @@
                 <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Dashboard</h2>
                 <button onclick="closeDashboard()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            
             <div id="statsCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="glass-card p-4">
-                    <h3 class="font-semibold mb-3">📊 Daily Visits (Last 30 Days)</h3>
-                    <div id="dailyVisits" class="space-y-1 max-h-48 overflow-y-auto"></div>
-                </div>
-                <div class="glass-card p-4">
-                    <h3 class="font-semibold mb-3">📈 Monthly Visits</h3>
-                    <div id="monthlyVisits" class="space-y-2"></div>
-                </div>
+                <div class="glass-card p-4"><h3 class="font-semibold mb-3">📊 Daily Visits (Last 30 Days)</h3><div id="dailyVisits" class="space-y-1 max-h-48 overflow-y-auto"></div></div>
+                <div class="glass-card p-4"><h3 class="font-semibold mb-3">📈 Monthly Visits</h3><div id="monthlyVisits" class="space-y-2"></div></div>
             </div>
-            
             <div class="glass-card p-4">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                     <h3 class="font-semibold">🗂️ All Deployments</h3>
                     <div class="flex gap-2">
-                        <input type="text" id="searchDeployments" placeholder="Search by ID..." class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-sm">
+                        <input type="text" id="searchDeployments" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-sm">
                         <button onclick="loadDeployments()" class="bg-purple-600/20 hover:bg-purple-600/30 px-4 py-1.5 rounded-xl text-sm transition">🔄 Refresh</button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="admin-table">
-                        <thead>
-                            <tr><th>ID/Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="deploymentsList"></tbody>
-                    </table>
+                    <table class="admin-table"><thead><tr><th>Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr></thead><tbody id="deploymentsList"></tbody></table>
                 </div>
                 <div id="noDeployments" class="text-center py-8 text-gray-500 hidden">No deployments found</div>
             </div>
@@ -342,66 +350,44 @@
         
         let currentDeployments = [];
         
-        // ========== CHECK URL FOR ADMIN (FIXED) ==========
+        // ========== SECRET ADMIN ACCESS ==========
         function checkUrlForAdmin() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('admin') === 'true') {
                 showAdminLogin();
-                // Remove param from URL without reload
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
+                window.history.replaceState({}, document.title, window.location.pathname);
                 return true;
             }
             return false;
         }
         
-        // Secret console command
-        window.showAdminSecret = function() {
-            showAdminLogin();
-            console.log('%c🔐 Admin panel unlocked!', 'color: #8b5cf6; font-size: 16px;');
-        };
+        window.showAdminSecret = function() { showAdminLogin(); console.log('%c🔐 Admin panel unlocked!', 'color: #8b5cf6;'); };
         
-        // Secret key combo: Ctrl+Shift+A x3
-        let secretKeyPressCount = 0;
-        let secretTimeout;
+        let secretKeyPressCount = 0, secretTimeout;
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.shiftKey && e.key === 'A') {
                 e.preventDefault();
                 secretKeyPressCount++;
                 clearTimeout(secretTimeout);
                 secretTimeout = setTimeout(() => { secretKeyPressCount = 0; }, 2000);
-                if (secretKeyPressCount >= 3) {
-                    secretKeyPressCount = 0;
-                    showAdminLogin();
-                }
+                if (secretKeyPressCount >= 3) { secretKeyPressCount = 0; showAdminLogin(); }
             }
         });
         
         // ========== INIT ==========
         function init() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                currentDeployments = JSON.parse(saved);
-                checkExpiredDeployments();
-            } else {
-                currentDeployments = [];
-            }
+            if (saved) { currentDeployments = JSON.parse(saved); checkExpiredDeployments(); }
+            else { currentDeployments = []; }
             
             document.getElementById('deployForm').addEventListener('submit', handleDeploy);
             document.getElementById('codeInput').addEventListener('input', updateCharCount);
             document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
             
-            // Duration card styling
             document.querySelectorAll('.duration-card').forEach(card => {
                 const radio = card.querySelector('.duration-radio');
-                if (radio.checked) {
-                    card.classList.add('border-purple-500', 'bg-purple-500/10');
-                    card.classList.remove('border-gray-700');
-                } else {
-                    card.classList.add('border-gray-700');
-                    card.classList.remove('border-purple-500', 'bg-purple-500/10');
-                }
-                
+                if (radio.checked) { card.classList.add('border-purple-500', 'bg-purple-500/10'); card.classList.remove('border-gray-700'); }
+                else { card.classList.add('border-gray-700'); card.classList.remove('border-purple-500', 'bg-purple-500/10'); }
                 card.addEventListener('click', () => {
                     document.querySelectorAll('.duration-card').forEach(c => {
                         c.classList.remove('border-purple-500', 'bg-purple-500/10');
@@ -413,7 +399,6 @@
                     card.querySelector('.duration-radio').checked = true;
                 });
             });
-            
             updateCharCount();
             checkUrlForAdmin();
         }
@@ -422,18 +407,13 @@
             const now = new Date();
             let changed = false;
             currentDeployments = currentDeployments.filter(dep => {
-                if (dep.expiresAt && new Date(dep.expiresAt) < now) {
-                    changed = true;
-                    return false;
-                }
+                if (dep.expiresAt && new Date(dep.expiresAt) < now) { changed = true; return false; }
                 return true;
             });
             if (changed) saveDeployments();
         }
         
-        function saveDeployments() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentDeployments));
-        }
+        function saveDeployments() { localStorage.setItem(STORAGE_KEY, JSON.stringify(currentDeployments)); }
         
         function generateId(projectName) {
             if (projectName && projectName.trim()) {
@@ -448,10 +428,7 @@
         async function handleDeploy(e) {
             e.preventDefault();
             const code = document.getElementById('codeInput').value.trim();
-            if (!code) {
-                showToast('Please enter HTML code!', 'error');
-                return;
-            }
+            if (!code) { showToast('Please enter HTML code!', 'error'); return; }
             
             const projectName = document.getElementById('projectName').value.trim();
             const durationRadio = document.querySelector('input[name="duration"]:checked');
@@ -463,13 +440,9 @@
             
             const id = generateId(projectName);
             const deployment = {
-                _id: id,
-                name: projectName || id,
-                code: code,
-                createdAt: new Date().toISOString(),
-                expiresAt: expiresAt ? expiresAt.toISOString() : null,
-                views: 0,
-                active: true
+                _id: id, name: projectName || id, code: code,
+                createdAt: new Date().toISOString(), expiresAt: expiresAt ? expiresAt.toISOString() : null,
+                views: 0, active: true
             };
             
             currentDeployments.unshift(deployment);
@@ -486,6 +459,7 @@
                     <a href="${liveUrl}" target="_blank" class="text-purple-400 hover:underline break-all font-mono text-sm">${liveUrl}</a>
                 </div>
                 <button onclick="copyToClipboard('${liveUrl}')" class="mt-3 upload-btn text-sm">📋 Copy Link</button>
+                <button onclick="openPreview('${id}')" class="mt-3 ml-2 upload-btn text-sm">👁️ Preview</button>
             `;
             resultDiv.classList.remove('hidden');
             
@@ -493,13 +467,10 @@
             document.getElementById('projectName').value = '';
             updateCharCount();
             showToast('✅ Deployment successful!', 'success');
-            
             setTimeout(() => resultDiv.classList.add('hidden'), 15000);
         }
         
-        function updateCharCount() {
-            document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters';
-        }
+        function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters'; }
         
         function handleFileUpload(e) {
             const file = e.target.files[0];
@@ -511,12 +482,37 @@
                     showToast('File loaded successfully!', 'success');
                 };
                 reader.readAsText(file);
-            } else {
-                showToast('Please upload a valid HTML file', 'error');
-            }
+            } else { showToast('Please upload a valid HTML file', 'error'); }
             e.target.value = '';
         }
         
+        // ========== PREVIEW IN IFRAME (FULL ISOLATION) ==========
+        function openPreview(id) {
+            const deployment = currentDeployments.find(d => d._id === id);
+            if (deployment) {
+                const previewFrame = document.getElementById('previewFrame');
+                const previewContainer = document.getElementById('previewContainer');
+                const previewLink = document.getElementById('previewLink');
+                
+                // Create a blob URL for the HTML content
+                const blob = new Blob([deployment.code], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                previewFrame.src = blobUrl;
+                previewLink.href = blobUrl;
+                previewContainer.classList.add('active');
+                
+                // Clean up blob URL when iframe loads
+                previewFrame.onload = () => URL.revokeObjectURL(blobUrl);
+            }
+        }
+        
+        function closePreview() {
+            document.getElementById('previewContainer').classList.remove('active');
+            document.getElementById('previewFrame').src = '';
+        }
+        
+        // ========== CHECK PREVIEW FROM URL ==========
         function checkPreview() {
             const urlParams = new URLSearchParams(window.location.search);
             const previewId = urlParams.get('preview');
@@ -525,19 +521,40 @@
                 const deployment = currentDeployments.find(d => d._id === previewId);
                 if (deployment && deployment.active) {
                     if (deployment.expiresAt && new Date(deployment.expiresAt) < new Date()) {
-                        document.body.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-4xl mb-4">🔗 404</h1><p class="text-gray-400">This link has expired.</p><a href="/" class="text-purple-400 mt-4 inline-block">Go Home →</a></div></div>';
+                        showErrorPage('This link has expired.');
                         return;
                     }
                     deployment.views++;
                     saveDeployments();
                     trackVisit(previewId);
-                    document.body.innerHTML = deployment.code;
+                    
+                    // Show in iframe (full isolation)
+                    const blob = new Blob([deployment.code], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    document.body.innerHTML = '';
+                    document.body.style.margin = '0';
+                    document.body.style.padding = '0';
+                    document.body.style.background = 'white';
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100vh';
+                    iframe.style.border = 'none';
+                    iframe.src = blobUrl;
+                    document.body.appendChild(iframe);
                     return;
                 } else {
-                    document.body.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-4xl mb-4">🔗 404</h1><p class="text-gray-400">Deployment not found.</p><a href="/" class="text-purple-400 mt-4 inline-block">Go Home →</a></div></div>';
+                    showErrorPage('Deployment not found.');
                     return;
                 }
             }
+        }
+        
+        function showErrorPage(message) {
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63);color:white;font-family:sans-serif;">
+                    <div style="text-align:center;"><h1 style="font-size:4rem;margin-bottom:1rem;">🔗 404</h1><p>${message}</p><a href="/" style="color:#8b5cf6;margin-top:1rem;display:inline-block;">Go Home →</a></div>
+                </div>
+            `;
         }
         
         function trackVisit(deploymentId) {
@@ -553,8 +570,7 @@
         function getVisitStats() {
             const visits = JSON.parse(localStorage.getItem(VISITS_KEY) || '[]');
             const today = new Date().toISOString().split('T')[0];
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
             const dailyVisits = {}, monthlyVisits = {};
             visits.forEach(v => {
@@ -566,20 +582,14 @@
             return { daily, monthly };
         }
         
+        // Admin functions
         function showAdminLogin() { document.getElementById('adminModal').classList.add('active'); document.getElementById('adminPassword').value = ''; }
         function closeAdminModal() { document.getElementById('adminModal').classList.remove('active'); }
-        
         function adminLogin() {
-            const password = document.getElementById('adminPassword').value;
-            if (password === ADMIN_PASSWORD) {
-                closeAdminModal();
-                loadDashboard();
-                document.getElementById('dashboardModal').classList.add('active');
-            } else {
-                showToast('Invalid verification code!', 'error');
-            }
+            if (document.getElementById('adminPassword').value === ADMIN_PASSWORD) {
+                closeAdminModal(); loadDashboard(); document.getElementById('dashboardModal').classList.add('active');
+            } else { showToast('Invalid verification code!', 'error'); }
         }
-        
         function closeDashboard() { document.getElementById('dashboardModal').classList.remove('active'); }
         
         function loadDashboard() {
@@ -587,16 +597,13 @@
             const active = currentDeployments.filter(d => !(d.expiresAt && new Date(d.expiresAt) < new Date())).length;
             const stats = getVisitStats();
             const totalViews = stats.daily.reduce((sum, d) => sum + d.count, 0);
-            
             document.getElementById('statsCards').innerHTML = `
-                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">📦</div><div><p class="text-gray-400 text-sm">Total Deployments</p><p class="text-3xl font-bold">${total}</p></div></div></div>
-                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">🟢</div><div><p class="text-gray-400 text-sm">Active Deployments</p><p class="text-3xl font-bold">${active}</p></div></div></div>
-                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">👁️</div><div><p class="text-gray-400 text-sm">Total Views (30 days)</p><p class="text-3xl font-bold">${totalViews}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">📦</div><div><p class="text-gray-400 text-sm">Total</p><p class="text-3xl font-bold">${total}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">🟢</div><div><p class="text-gray-400 text-sm">Active</p><p class="text-3xl font-bold">${active}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">👁️</div><div><p class="text-gray-400 text-sm">Views (30d)</p><p class="text-3xl font-bold">${totalViews}</p></div></div></div>
             `;
-            
             document.getElementById('dailyVisits').innerHTML = stats.daily.length ? stats.daily.map(d => `<div class="flex justify-between text-sm py-1 border-b border-gray-800"><span>${d.date}</span><span class="text-purple-400">${d.count} views</span></div>`).join('') : '<p class="text-gray-500 text-sm">No data yet</p>';
             document.getElementById('monthlyVisits').innerHTML = stats.monthly.length ? stats.monthly.map(m => `<div class="flex justify-between text-sm py-2 border-b border-gray-800"><span>${m.month}</span><span class="text-purple-400">${m.count} views</span></div>`).join('') : '<p class="text-gray-500 text-sm">No data yet</p>';
-            
             loadDeployments();
         }
         
@@ -604,48 +611,39 @@
             const searchTerm = document.getElementById('searchDeployments').value.toLowerCase();
             let filtered = [...currentDeployments];
             if (searchTerm) filtered = filtered.filter(d => d._id.toLowerCase().includes(searchTerm) || (d.name && d.name.toLowerCase().includes(searchTerm)));
-            
             const tbody = document.getElementById('deploymentsList');
             const noDeployments = document.getElementById('noDeployments');
-            
-            if (filtered.length === 0) {
-                tbody.innerHTML = '';
-                noDeployments.classList.remove('hidden');
-                return;
-            }
+            if (filtered.length === 0) { tbody.innerHTML = ''; noDeployments.classList.remove('hidden'); return; }
             noDeployments.classList.add('hidden');
             tbody.innerHTML = filtered.map(d => `
                 <tr><td><a href="?preview=${d._id}" target="_blank" class="text-purple-400 hover:underline font-mono text-xs">${d.name || d._id}</a></td>
                 <td class="text-gray-300 text-sm">${new Date(d.createdAt).toLocaleString()}</td>
                 <td class="text-gray-300 text-sm">${d.expiresAt ? new Date(d.expiresAt).toLocaleString() : 'Lifetime'}</td>
                 <td>${d.views}</td>
-                <td><button onclick="deleteDeployment('${d._id}')" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded-lg text-xs transition">Delete</button></td></tr>
+                <td><button onclick="deleteDeployment('${d._id}')" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded-lg text-xs">Delete</button></td></tr>
             `).join('');
         }
         
         function deleteDeployment(id) {
-            if (confirm('Delete this deployment permanently?')) {
+            if (confirm('Delete permanently?')) {
                 currentDeployments = currentDeployments.filter(d => d._id !== id);
-                saveDeployments();
-                loadDashboard();
-                showToast('Deployment deleted', 'success');
+                saveDeployments(); loadDashboard(); showToast('Deleted', 'success');
             }
         }
         
-        function showToast(message, type = 'info') {
+        function showToast(msg, type = 'info') {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
             const toast = document.createElement('div');
             toast.className = 'toast';
-            toast.innerHTML = type === 'error' ? `❌ ${message}` : `✅ ${message}`;
+            toast.innerHTML = type === 'error' ? `❌ ${msg}` : `✅ ${msg}`;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
         
-        window.copyToClipboard = function(text) {
-            navigator.clipboard.writeText(text);
-            showToast('Link copied to clipboard!', 'success');
-        };
+        window.copyToClipboard = function(text) { navigator.clipboard.writeText(text); showToast('Link copied!', 'success'); };
+        window.openPreview = openPreview;
+        window.closePreview = closePreview;
         
         init();
         checkPreview();
