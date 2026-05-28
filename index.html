@@ -55,6 +55,623 @@
             outline: none;
         }
         
+        .upload-btn {
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+        }
+        
+        .upload-btn:hover {
+            background: rgba(139, 92, 246, 0.35);
+            border-color: #8b5cf6;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+            border: 1px solid #8b5cf6;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #1e1e2e;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .admin-table th, .admin-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .admin-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #8b5cf6;
+            border-radius: 10px;
+        }
+        
+        .result-link {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="mainContent" class="container mx-auto px-4 py-8 max-w-5xl">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <div class="inline-block p-3 bg-purple-500/20 rounded-2xl mb-4">
+                <span class="text-5xl">🚀</span>
+            </div>
+            <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
+                CodeHost
+            </h1>
+            <p class="text-gray-300 mt-3 text-lg max-w-2xl mx-auto">
+                Upload your HTML/CSS/JS code and get a live link instantly. Free, fast, and secure.
+            </p>
+        </div>
+
+        <!-- Deploy Card -->
+        <div class="glass-card p-6 md:p-8 mb-8">
+            <form id="deployForm">
+                <!-- Project Name -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        🏷️ Project Name (Optional)
+                    </label>
+                    <input type="text" id="projectName" class="code-editor w-full p-3 rounded-xl text-gray-200 text-sm" 
+                        placeholder="my-awesome-project (will appear in URL)"
+                        autocomplete="off">
+                    <p class="text-xs text-gray-500 mt-1">Leave empty for auto-generated ID</p>
+                </div>
+
+                <!-- Code Input -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        📝 HTML / CSS / JavaScript Code
+                    </label>
+                    <textarea id="codeInput" rows="12" class="code-editor w-full p-4 rounded-xl text-gray-200 font-mono text-sm resize-none"
+                        placeholder='Paste your HTML code here...'></textarea>
+                    <div class="flex justify-between items-center mt-3">
+                        <label class="upload-btn cursor-pointer">
+                            📂 Choose HTML File
+                            <input type="file" id="fileUpload" accept=".html,.htm" class="hidden" />
+                        </label>
+                        <span id="charCount" class="text-xs text-gray-500">0 characters</span>
+                    </div>
+                </div>
+
+                <!-- Duration Options -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-3">
+                        ⏳ Expiration Time
+                    </label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="day">
+                            <input type="radio" name="duration" value="day" class="hidden duration-radio" checked>
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">🌙</div>
+                                <div class="font-semibold">1 Day</div>
+                                <div class="text-xs text-gray-500 mt-1">Auto-deletes after 24 hours</div>
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="week">
+                            <input type="radio" name="duration" value="week" class="hidden duration-radio">
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">📅</div>
+                                <div class="font-semibold">1 Week</div>
+                                <div class="text-xs text-gray-500 mt-1">Auto-deletes after 7 days</div>
+                            </div>
+                        </label>
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="lifetime">
+                            <input type="radio" name="duration" value="lifetime" class="hidden duration-radio">
+                            <div class="text-center">
+                                <div class="text-2xl mb-1">∞</div>
+                                <div class="font-semibold">Lifetime</div>
+                                <div class="text-xs text-gray-500 mt-1">Never expires</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Deploy Button -->
+                <button type="submit" id="deployBtn" class="btn-primary w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span>🚀</span> Deploy Now
+                    <span>⚡</span>
+                </button>
+            </form>
+
+            <!-- Result Message -->
+            <div id="resultMessage" class="mt-6 hidden"></div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass-card p-5 text-center">
+                <div class="text-3xl mb-3">⚡</div>
+                <h3 class="font-semibold text-lg">Instant Deploy</h3>
+                <p class="text-gray-400 text-sm mt-1">Your code goes live in seconds</p>
+            </div>
+            <div class="glass-card p-5 text-center">
+                <div class="text-3xl mb-3">🔗</div>
+                <h3 class="font-semibold text-lg">Shareable Link</h3>
+                <p class="text-gray-400 text-sm mt-1">Get a unique URL with custom name</p>
+            </div>
+            <div class="glass-card p-5 text-center">
+                <div class="text-3xl mb-3">🛡️</div>
+                <h3 class="font-semibold text-lg">Auto Expiration</h3>
+                <p class="text-gray-400 text-sm mt-1">Choose 1 day, 1 week, or lifetime</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm">
+            <p>✨ Secure • Fast • Free • No Signup Required ✨</p>
+            <p class="mt-2 text-xs">Created by <span class="text-purple-400">Mr. Arslan</span></p>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-center mb-6">
+                <div class="text-4xl mb-2">🔐</div>
+                <h2 class="text-2xl font-bold">Access Panel</h2>
+                <p class="text-gray-400 text-sm mt-1">Enter verification code</p>
+            </div>
+            <input type="password" id="adminPassword" placeholder="Verification code" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:ring-2 focus:ring-purple-500 mb-4">
+            <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-xl font-semibold">Verify →</button>
+            <button onclick="closeAdminModal()" class="w-full mt-3 text-gray-400 hover:text-white text-sm">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard Modal -->
+    <div id="dashboardModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; max-height: 80vh; overflow-y: auto;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Dashboard</h2>
+                <button onclick="closeDashboard()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <div id="statsCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="glass-card p-4">
+                    <h3 class="font-semibold mb-3">📊 Daily Visits (Last 30 Days)</h3>
+                    <div id="dailyVisits" class="space-y-1 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div class="glass-card p-4">
+                    <h3 class="font-semibold mb-3">📈 Monthly Visits</h3>
+                    <div id="monthlyVisits" class="space-y-2"></div>
+                </div>
+            </div>
+            
+            <div class="glass-card p-4">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h3 class="font-semibold">🗂️ All Deployments</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="searchDeployments" placeholder="Search by ID..." class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-sm">
+                        <button onclick="loadDeployments()" class="bg-purple-600/20 hover:bg-purple-600/30 px-4 py-1.5 rounded-xl text-sm transition">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="admin-table">
+                        <thead>
+                            <tr><th>ID/Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="deploymentsList"></tbody>
+                    </table>
+                </div>
+                <div id="noDeployments" class="text-center py-8 text-gray-500 hidden">No deployments found</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const STORAGE_KEY = 'codehost_deployments';
+        const VISITS_KEY = 'codehost_visits';
+        const ADMIN_PASSWORD = 'admin123';
+        
+        let currentDeployments = [];
+        
+        // ========== CHECK URL FOR ADMIN (FIXED) ==========
+        function checkUrlForAdmin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                showAdminLogin();
+                // Remove param from URL without reload
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                return true;
+            }
+            return false;
+        }
+        
+        // Secret console command
+        window.showAdminSecret = function() {
+            showAdminLogin();
+            console.log('%c🔐 Admin panel unlocked!', 'color: #8b5cf6; font-size: 16px;');
+        };
+        
+        // Secret key combo: Ctrl+Shift+A x3
+        let secretKeyPressCount = 0;
+        let secretTimeout;
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                secretKeyPressCount++;
+                clearTimeout(secretTimeout);
+                secretTimeout = setTimeout(() => { secretKeyPressCount = 0; }, 2000);
+                if (secretKeyPressCount >= 3) {
+                    secretKeyPressCount = 0;
+                    showAdminLogin();
+                }
+            }
+        });
+        
+        // ========== INIT ==========
+        function init() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                currentDeployments = JSON.parse(saved);
+                checkExpiredDeployments();
+            } else {
+                currentDeployments = [];
+            }
+            
+            document.getElementById('deployForm').addEventListener('submit', handleDeploy);
+            document.getElementById('codeInput').addEventListener('input', updateCharCount);
+            document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+            
+            // Duration card styling
+            document.querySelectorAll('.duration-card').forEach(card => {
+                const radio = card.querySelector('.duration-radio');
+                if (radio.checked) {
+                    card.classList.add('border-purple-500', 'bg-purple-500/10');
+                    card.classList.remove('border-gray-700');
+                } else {
+                    card.classList.add('border-gray-700');
+                    card.classList.remove('border-purple-500', 'bg-purple-500/10');
+                }
+                
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.duration-card').forEach(c => {
+                        c.classList.remove('border-purple-500', 'bg-purple-500/10');
+                        c.classList.add('border-gray-700');
+                        c.querySelector('.duration-radio').checked = false;
+                    });
+                    card.classList.add('border-purple-500', 'bg-purple-500/10');
+                    card.classList.remove('border-gray-700');
+                    card.querySelector('.duration-radio').checked = true;
+                });
+            });
+            
+            updateCharCount();
+            checkUrlForAdmin();
+        }
+        
+        function checkExpiredDeployments() {
+            const now = new Date();
+            let changed = false;
+            currentDeployments = currentDeployments.filter(dep => {
+                if (dep.expiresAt && new Date(dep.expiresAt) < now) {
+                    changed = true;
+                    return false;
+                }
+                return true;
+            });
+            if (changed) saveDeployments();
+        }
+        
+        function saveDeployments() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentDeployments));
+        }
+        
+        function generateId(projectName) {
+            if (projectName && projectName.trim()) {
+                let cleanName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+                cleanName = cleanName.replace(/^-|-$/g, '');
+                if (cleanName.length > 30) cleanName = cleanName.substring(0, 30);
+                return cleanName + '-' + Date.now().toString(36);
+            }
+            return Math.random().toString(36).substring(2, 8) + Date.now().toString(36);
+        }
+        
+        async function handleDeploy(e) {
+            e.preventDefault();
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) {
+                showToast('Please enter HTML code!', 'error');
+                return;
+            }
+            
+            const projectName = document.getElementById('projectName').value.trim();
+            const durationRadio = document.querySelector('input[name="duration"]:checked');
+            const duration = durationRadio ? durationRadio.value : 'day';
+            
+            let expiresAt = null;
+            if (duration === 'day') expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            else if (duration === 'week') expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            
+            const id = generateId(projectName);
+            const deployment = {
+                _id: id,
+                name: projectName || id,
+                code: code,
+                createdAt: new Date().toISOString(),
+                expiresAt: expiresAt ? expiresAt.toISOString() : null,
+                views: 0,
+                active: true
+            };
+            
+            currentDeployments.unshift(deployment);
+            saveDeployments();
+            
+            const liveUrl = `${window.location.origin}${window.location.pathname}?preview=${id}`;
+            
+            const resultDiv = document.getElementById('resultMessage');
+            resultDiv.className = 'mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl';
+            resultDiv.innerHTML = `
+                <p class="text-green-400 font-medium flex items-center gap-2">✅ Deployment successful!</p>
+                <div class="mt-3 p-2 bg-gray-900/50 rounded-lg">
+                    <p class="text-xs text-gray-400 mb-1">🔗 Live Link:</p>
+                    <a href="${liveUrl}" target="_blank" class="text-purple-400 hover:underline break-all font-mono text-sm">${liveUrl}</a>
+                </div>
+                <button onclick="copyToClipboard('${liveUrl}')" class="mt-3 upload-btn text-sm">📋 Copy Link</button>
+            `;
+            resultDiv.classList.remove('hidden');
+            
+            document.getElementById('codeInput').value = '';
+            document.getElementById('projectName').value = '';
+            updateCharCount();
+            showToast('✅ Deployment successful!', 'success');
+            
+            setTimeout(() => resultDiv.classList.add('hidden'), 15000);
+        }
+        
+        function updateCharCount() {
+            document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters';
+        }
+        
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('codeInput').value = ev.target.result;
+                    updateCharCount();
+                    showToast('File loaded successfully!', 'success');
+                };
+                reader.readAsText(file);
+            } else {
+                showToast('Please upload a valid HTML file', 'error');
+            }
+            e.target.value = '';
+        }
+        
+        function checkPreview() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const previewId = urlParams.get('preview');
+            
+            if (previewId) {
+                const deployment = currentDeployments.find(d => d._id === previewId);
+                if (deployment && deployment.active) {
+                    if (deployment.expiresAt && new Date(deployment.expiresAt) < new Date()) {
+                        document.body.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-4xl mb-4">🔗 404</h1><p class="text-gray-400">This link has expired.</p><a href="/" class="text-purple-400 mt-4 inline-block">Go Home →</a></div></div>';
+                        return;
+                    }
+                    deployment.views++;
+                    saveDeployments();
+                    trackVisit(previewId);
+                    document.body.innerHTML = deployment.code;
+                    return;
+                } else {
+                    document.body.innerHTML = '<div class="min-h-screen flex items-center justify-center"><div class="text-center"><h1 class="text-4xl mb-4">🔗 404</h1><p class="text-gray-400">Deployment not found.</p><a href="/" class="text-purple-400 mt-4 inline-block">Go Home →</a></div></div>';
+                    return;
+                }
+            }
+        }
+        
+        function trackVisit(deploymentId) {
+            const today = new Date().toISOString().split('T')[0];
+            const month = today.slice(0, 7);
+            let visits = JSON.parse(localStorage.getItem(VISITS_KEY) || '[]');
+            const existing = visits.find(v => v.date === today && v.deploymentId === deploymentId);
+            if (existing) existing.count++;
+            else visits.push({ date: today, month, deploymentId, count: 1 });
+            localStorage.setItem(VISITS_KEY, JSON.stringify(visits));
+        }
+        
+        function getVisitStats() {
+            const visits = JSON.parse(localStorage.getItem(VISITS_KEY) || '[]');
+            const today = new Date().toISOString().split('T')[0];
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+            const dailyVisits = {}, monthlyVisits = {};
+            visits.forEach(v => {
+                if (v.date >= thirtyDaysAgoStr && v.date <= today) dailyVisits[v.date] = (dailyVisits[v.date] || 0) + v.count;
+                monthlyVisits[v.month] = (monthlyVisits[v.month] || 0) + v.count;
+            });
+            const daily = Object.entries(dailyVisits).map(([date, count]) => ({ date, count })).sort((a,b) => a.date.localeCompare(b.date));
+            const monthly = Object.entries(monthlyVisits).map(([month, count]) => ({ month, count })).sort((a,b) => b.month.localeCompare(a.month)).slice(0, 6);
+            return { daily, monthly };
+        }
+        
+        function showAdminLogin() { document.getElementById('adminModal').classList.add('active'); document.getElementById('adminPassword').value = ''; }
+        function closeAdminModal() { document.getElementById('adminModal').classList.remove('active'); }
+        
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                closeAdminModal();
+                loadDashboard();
+                document.getElementById('dashboardModal').classList.add('active');
+            } else {
+                showToast('Invalid verification code!', 'error');
+            }
+        }
+        
+        function closeDashboard() { document.getElementById('dashboardModal').classList.remove('active'); }
+        
+        function loadDashboard() {
+            const total = currentDeployments.length;
+            const active = currentDeployments.filter(d => !(d.expiresAt && new Date(d.expiresAt) < new Date())).length;
+            const stats = getVisitStats();
+            const totalViews = stats.daily.reduce((sum, d) => sum + d.count, 0);
+            
+            document.getElementById('statsCards').innerHTML = `
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">📦</div><div><p class="text-gray-400 text-sm">Total Deployments</p><p class="text-3xl font-bold">${total}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">🟢</div><div><p class="text-gray-400 text-sm">Active Deployments</p><p class="text-3xl font-bold">${active}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">👁️</div><div><p class="text-gray-400 text-sm">Total Views (30 days)</p><p class="text-3xl font-bold">${totalViews}</p></div></div></div>
+            `;
+            
+            document.getElementById('dailyVisits').innerHTML = stats.daily.length ? stats.daily.map(d => `<div class="flex justify-between text-sm py-1 border-b border-gray-800"><span>${d.date}</span><span class="text-purple-400">${d.count} views</span></div>`).join('') : '<p class="text-gray-500 text-sm">No data yet</p>';
+            document.getElementById('monthlyVisits').innerHTML = stats.monthly.length ? stats.monthly.map(m => `<div class="flex justify-between text-sm py-2 border-b border-gray-800"><span>${m.month}</span><span class="text-purple-400">${m.count} views</span></div>`).join('') : '<p class="text-gray-500 text-sm">No data yet</p>';
+            
+            loadDeployments();
+        }
+        
+        function loadDeployments() {
+            const searchTerm = document.getElementById('searchDeployments').value.toLowerCase();
+            let filtered = [...currentDeployments];
+            if (searchTerm) filtered = filtered.filter(d => d._id.toLowerCase().includes(searchTerm) || (d.name && d.name.toLowerCase().includes(searchTerm)));
+            
+            const tbody = document.getElementById('deploymentsList');
+            const noDeployments = document.getElementById('noDeployments');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                noDeployments.classList.remove('hidden');
+                return;
+            }
+            noDeployments.classList.add('hidden');
+            tbody.innerHTML = filtered.map(d => `
+                <tr><td><a href="?preview=${d._id}" target="_blank" class="text-purple-400 hover:underline font-mono text-xs">${d.name || d._id}</a></td>
+                <td class="text-gray-300 text-sm">${new Date(d.createdAt).toLocaleString()}</td>
+                <td class="text-gray-300 text-sm">${d.expiresAt ? new Date(d.expiresAt).toLocaleString() : 'Lifetime'}</td>
+                <td>${d.views}</td>
+                <td><button onclick="deleteDeployment('${d._id}')" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded-lg text-xs transition">Delete</button></td></tr>
+            `).join('');
+        }
+        
+        function deleteDeployment(id) {
+            if (confirm('Delete this deployment permanently?')) {
+                currentDeployments = currentDeployments.filter(d => d._id !== id);
+                saveDeployments();
+                loadDashboard();
+                showToast('Deployment deleted', 'success');
+            }
+        }
+        
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = type === 'error' ? `❌ ${message}` : `✅ ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Link copied to clipboard!', 'success');
+        };
+        
+        init();
+        checkPreview();
+    </script>
+</body>
+</html>            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4);
+        }
+        
+        .code-editor {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .code-editor:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+            outline: none;
+        }
+        
         .toast {
             position: fixed;
             bottom: 20px;
