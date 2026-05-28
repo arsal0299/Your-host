@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>CodeHost – Deploy HTML Instantly | Live HTML Hosting</title>
-    <meta name="description" content="Deploy your HTML/CSS/JS code instantly and get a live link. Free HTML hosting with expiration options.">
-    <meta name="keywords" content="HTML hosting, code deploy, live link, free hosting, web hosting, instant deploy">
+    <title>CodeHost – Deploy HTML Instantly | Free HTML Hosting</title>
+    <meta name="description" content="Deploy your HTML/CSS/JS code instantly and get a live link. Free HTML hosting with expiration options. Share your web projects in seconds.">
+    <meta name="keywords" content="HTML hosting, code deploy, live link, free hosting, web hosting, instant deploy, code sharing">
     <meta name="author" content="Mr. Arslan">
     <meta name="robots" content="index, follow">
     
@@ -88,7 +88,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             backdrop-filter: blur(8px);
             z-index: 1000;
             display: none;
@@ -142,7 +142,7 @@
         }
     </style>
 </head>
-<body class="text-white">
+<body>
 
     <!-- Main Content -->
     <div id="mainContent" class="container mx-auto px-4 py-8 max-w-5xl">
@@ -155,7 +155,7 @@
                 CodeHost
             </h1>
             <p class="text-gray-300 mt-3 text-lg max-w-2xl mx-auto">
-                Deploy your HTML/CSS/JS code instantly. Get a live link to share with the world.
+                Upload your HTML/CSS/JS code and get a live link instantly. Free, fast, and secure.
             </p>
         </div>
 
@@ -168,18 +168,14 @@
                         📝 HTML / CSS / JavaScript Code
                     </label>
                     <textarea id="codeInput" rows="12" class="code-editor w-full p-4 rounded-xl text-gray-200 font-mono text-sm resize-none"
-                        placeholder='<!DOCTYPE html>
-<html>
-<head>
-  <title>My Page</title>
-  <style>
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-  </style>
-</head>
-<body>
-  <h1>Hello World!</h1>
-</body>
-</html>'></textarea>
+                        placeholder='Paste your HTML code here... Example:
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;title&gt;My Page&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Hello World!&lt;/h1&gt;
+&lt;/body&gt;
+&lt;/html&gt;'></textarea>
                     <div class="flex justify-between items-center mt-2">
                         <label class="cursor-pointer text-sm text-purple-400 hover:text-purple-300 transition">
                             📂 Upload HTML file
@@ -252,26 +248,23 @@
             </div>
         </div>
 
-        <!-- Footer -->
+        <!-- Footer (No Admin Button) -->
         <div class="text-center text-gray-500 text-sm">
-            <p>✨ Secure • Fast • Free • Analytics • Admin Panel</p>
-            <p class="mt-1">
-                Admin login: <a href="#" onclick="showAdminLogin()" class="text-purple-400 hover:underline">Click Here</a>
-            </p>
-            <p class="mt-2 text-xs">✨ Created by <span class="text-purple-400">Mr. Arslan</span> ✨</p>
+            <p>✨ Secure • Fast • Free • No Signup Required ✨</p>
+            <p class="mt-2 text-xs">Created by <span class="text-purple-400">Mr. Arslan</span></p>
         </div>
     </div>
 
-    <!-- Admin Login Modal -->
+    <!-- Admin Modal (Hidden - Access via Secret Method) -->
     <div id="adminModal" class="modal-overlay">
         <div class="modal-content">
             <div class="text-center mb-6">
                 <div class="text-4xl mb-2">🔐</div>
-                <h2 class="text-2xl font-bold">Admin Login</h2>
-                <p class="text-gray-400 text-sm mt-1">Enter password to access dashboard</p>
+                <h2 class="text-2xl font-bold">Access Panel</h2>
+                <p class="text-gray-400 text-sm mt-1">Enter verification code</p>
             </div>
-            <input type="password" id="adminPassword" placeholder="Password" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:ring-2 focus:ring-purple-500 mb-4">
-            <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-xl font-semibold">Login →</button>
+            <input type="password" id="adminPassword" placeholder="Verification code" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:ring-2 focus:ring-purple-500 mb-4">
+            <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-xl font-semibold">Verify →</button>
             <button onclick="closeAdminModal()" class="w-full mt-3 text-gray-400 hover:text-white text-sm">Cancel</button>
         </div>
     </div>
@@ -281,7 +274,7 @@
         <div class="modal-content" style="max-width: 1000px; max-height: 80vh; overflow-y: auto;">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    Admin Dashboard
+                    Dashboard
                 </h2>
                 <button onclick="closeDashboard()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
@@ -333,10 +326,49 @@
         // ========== CONFIGURATION ==========
         const STORAGE_KEY = 'codehost_deployments';
         const VISITS_KEY = 'codehost_visits';
-        const ADMIN_PASSWORD = 'admin123';  // Change this to your password
+        const ADMIN_PASSWORD = 'admin123';  // Change this to your secret password
         
         let currentDeployments = [];
-        let isAdminLoggedIn = false;
+        let secretKeyPressCount = 0;
+        let secretTimeout;
+        
+        // ========== SECRET ADMIN ACCESS METHODS ==========
+        
+        // Method 1: URL Parameter - Add ?admin=true to URL
+        function checkUrlForAdmin() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                showAdminLogin();
+                // Remove param from URL without reload
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return true;
+            }
+            return false;
+        }
+        
+        // Method 2: Console command - type 'showAdminSecret()' in console
+        window.showAdminSecret = function() {
+            showAdminLogin();
+            console.log('%c🔐 Admin panel unlocked!', 'color: #8b5cf6; font-size: 16px;');
+        };
+        
+        // Method 3: Secret key combo - Press Ctrl+Shift+A three times
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                secretKeyPressCount++;
+                
+                clearTimeout(secretTimeout);
+                secretTimeout = setTimeout(() => {
+                    secretKeyPressCount = 0;
+                }, 2000);
+                
+                if (secretKeyPressCount >= 3) {
+                    secretKeyPressCount = 0;
+                    showAdminLogin();
+                }
+            }
+        });
         
         // ========== INITIALIZATION ==========
         function init() {
@@ -379,39 +411,8 @@
             
             updateCharCount();
             
-            // Set example code
-            document.getElementById('codeInput').value = `<!DOCTYPE html>
-<html>
-<head>
-    <title>My Awesome Page</title>
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: sans-serif;
-        }
-        .card {
-            background: rgba(255,255,255,0.9);
-            padding: 2rem;
-            border-radius: 1rem;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-        }
-        h1 { color: #764ba2; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>✨ Hello World! ✨</h1>
-        <p>This page was deployed with CodeHost</p>
-        <button onclick="alert('Welcome!')">Click Me</button>
-    </div>
-</body>
-</html>`;
-            updateCharCount();
+            // Check for secret admin access
+            checkUrlForAdmin();
         }
         
         // ========== CHECK EXPIRED DEPLOYMENTS ==========
@@ -612,7 +613,7 @@
                 loadDashboard();
                 document.getElementById('dashboardModal').classList.add('active');
             } else {
-                showToast('Invalid password!', 'error');
+                showToast('Invalid verification code!', 'error');
             }
         }
         
@@ -717,10 +718,10 @@
             setTimeout(() => toast.remove(), 3000);
         }
         
-        function copyToClipboard(text) {
+        window.copyToClipboard = function(text) {
             navigator.clipboard.writeText(text);
             showToast('Link copied to clipboard!', 'success');
-        }
+        };
         
         // ========== INIT ==========
         init();
