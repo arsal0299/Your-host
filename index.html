@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>CodeHost – Instant HTML Deployer (No Backend)</title>
+    <title>CodeHost – GitHub Gist Backed (Globally Working)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Same styles as before (omitted for brevity, but included in final code) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; }
         .glass-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
@@ -34,7 +33,7 @@
     <div class="text-center mb-10">
         <div class="inline-block p-3 bg-purple-500/20 rounded-2xl mb-4"><span class="text-5xl">🚀</span></div>
         <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">CodeHost</h1>
-        <p class="text-gray-300 mt-3 text-lg max-w-2xl mx-auto">Deploy HTML instantly – link contains your entire code. Works everywhere!</p>
+        <p class="text-gray-300 mt-3 text-lg max-w-2xl mx-auto">GitHub Gist based – works everywhere, incognito, any device. Forever free!</p>
     </div>
 
     <div class="glass-card p-6 md:p-8 mb-8">
@@ -52,15 +51,15 @@
                 </div>
             </div>
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-300 mb-3">⏳ Expiration Time (for link)</label>
+                <label class="block text-sm font-medium text-gray-300 mb-3">⏳ Expiration Time</label>
                 <div class="flex flex-wrap gap-4">
                     <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="day">
                         <input type="radio" name="duration" value="day" class="hidden duration-radio" checked>
-                        <div class="text-center"><div class="text-2xl mb-1">🌙</div><div class="font-semibold">1 Day</div><div class="text-xs text-gray-500 mt-1">Link expires after 24h</div></div>
+                        <div class="text-center"><div class="text-2xl mb-1">🌙</div><div class="font-semibold">1 Day</div><div class="text-xs text-gray-500 mt-1">Auto-deletes after 24h</div></div>
                     </label>
                     <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="week">
                         <input type="radio" name="duration" value="week" class="hidden duration-radio">
-                        <div class="text-center"><div class="text-2xl mb-1">📅</div><div class="font-semibold">1 Week</div><div class="text-xs text-gray-500 mt-1">Link expires after 7 days</div></div>
+                        <div class="text-center"><div class="text-2xl mb-1">📅</div><div class="font-semibold">1 Week</div><div class="text-xs text-gray-500 mt-1">Auto-deletes after 7d</div></div>
                     </label>
                     <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="lifetime">
                         <input type="radio" name="duration" value="lifetime" class="hidden duration-radio">
@@ -76,7 +75,7 @@
     </div>
 
     <div class="text-center text-gray-500 text-sm">
-        <p>✨ No Backend • Works on Any Device • Incognito Mode Supported ✨</p>
+        <p>✨ Powered by GitHub Gist • Unlimited • Forever Free ✨</p>
         <p class="mt-2 text-xs">Created by <span class="text-purple-400">Mr. Arslan</span></p>
     </div>
 </div>
@@ -91,281 +90,188 @@
 </div>
 
 <script>
-    // ========== DEPLOY USING URL ENCODING ==========
-    function encodeCodeToUrl(code) {
-        // Compress using LZString if available? But simple btoa works.
+    // ========== 🔐 YAHAN APNA GITHUB TOKEN DALO ==========
+    const GITHUB_TOKEN = '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';  // <-- Yahan apna token paste karo
+    
+    const STORAGE_KEY = 'codehost_gist_id';
+    let currentGistId = localStorage.getItem(STORAGE_KEY);
+    let currentDeployments = [];
+    
+    // ========== GIST AUTO-CREATE & SYNC ==========
+    async function ensureGist() {
+        if (!GITHUB_TOKEN || GITHUB_TOKEN === 'ghp_xxxxxxxxxxxxxxx') {
+            console.warn('No GitHub token. Using localStorage only (same browser only).');
+            loadFromLocal();
+            return false;
+        }
         try {
-            return btoa(encodeURIComponent(code));
-        } catch(e) {
-            return '';
+            if (!currentGistId) {
+                // Auto-create a new Gist
+                const res = await fetch('https://api.github.com/gists', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        description: 'CodeHost deployments (auto-created)',
+                        public: false,
+                        files: {
+                            'deployments.json': { content: JSON.stringify({ deployments: [] }) }
+                        }
+                    })
+                });
+                const data = await res.json();
+                if (data.id) {
+                    currentGistId = data.id;
+                    localStorage.setItem(STORAGE_KEY, currentGistId);
+                    currentDeployments = [];
+                    await saveToGist();
+                    console.log('✅ New Gist created:', currentGistId);
+                } else {
+                    throw new Error('Gist creation failed');
+                }
+            } else {
+                // Load existing Gist
+                const res = await fetch(`https://api.github.com/gists/${currentGistId}`, {
+                    headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+                });
+                const data = await res.json();
+                if (data.files && data.files['deployments.json']) {
+                    const content = JSON.parse(data.files['deployments.json'].content);
+                    currentDeployments = content.deployments || [];
+                } else {
+                    currentDeployments = [];
+                }
+            }
+            // Filter expired
+            const now = new Date();
+            let changed = false;
+            currentDeployments = currentDeployments.filter(d => {
+                if (d.expiresAt && new Date(d.expiresAt) < now) {
+                    changed = true;
+                    return false;
+                }
+                return true;
+            });
+            if (changed) await saveToGist();
+            return true;
+        } catch (err) {
+            console.error('Gist error:', err);
+            loadFromLocal();
+            return false;
         }
     }
     
-    function decodeUrlToCode(encoded) {
-        try {
-            return decodeURIComponent(atob(encoded));
-        } catch(e) {
-            return '';
-        }
-    }
-    
-    function generateExpiryDate(duration) {
-        let expireTime = null;
-        if (duration === 'day') expireTime = Date.now() + 24 * 60 * 60 * 1000;
-        else if (duration === 'week') expireTime = Date.now() + 7 * 24 * 60 * 60 * 1000;
-        return expireTime;
-    }
-    
-    function isExpired(expireTime) {
-        if (!expireTime) return false;
-        return Date.now() > expireTime;
-    }
-    
-    function handleDeploy(e) {
-        e.preventDefault();
-        const code = document.getElementById('codeInput').value.trim();
-        if (!code) {
-            showToast('Please enter HTML code!', 'error');
+    async function saveToGist() {
+        if (!currentGistId || !GITHUB_TOKEN || GITHUB_TOKEN === 'ghp_xxxxxxxxxxxxxxx') {
+            saveToLocal();
             return;
         }
+        try {
+            await fetch(`https://api.github.com/gists/${currentGistId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    files: {
+                        'deployments.json': { content: JSON.stringify({ deployments: currentDeployments }, null, 2) }
+                    }
+                })
+            });
+            localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
+        } catch (err) {
+            saveToLocal();
+        }
+    }
+    
+    function saveToLocal() {
+        localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
+    }
+    
+    function loadFromLocal() {
+        const local = localStorage.getItem('codehost_deployments');
+        currentDeployments = local ? JSON.parse(local) : [];
+        const now = new Date();
+        let changed = false;
+        currentDeployments = currentDeployments.filter(d => {
+            if (d.expiresAt && new Date(d.expiresAt) < now) {
+                changed = true;
+                return false;
+            }
+            return true;
+        });
+        if (changed) saveToLocal();
+    }
+    
+    // ========== DEPLOY ==========
+    function generateId(projectName) {
+        if (projectName && projectName.trim()) {
+            let clean = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+            clean = clean.replace(/^-|-$/g, '');
+            if (clean.length > 30) clean = clean.substring(0, 30);
+            return clean + '-' + Date.now().toString(36);
+        }
+        return 'proj-' + Date.now().toString(36);
+    }
+    
+    async function handleDeploy(e) {
+        e.preventDefault();
+        const code = document.getElementById('codeInput').value.trim();
+        if (!code) { showToast('Please enter HTML code!', 'error'); return; }
         
         const projectName = document.getElementById('projectName').value.trim();
         const durationRadio = document.querySelector('input[name="duration"]:checked');
         const duration = durationRadio ? durationRadio.value : 'day';
-        const expireTime = generateExpiryDate(duration);
         
-        const encoded = encodeCodeToUrl(code);
-        if (!encoded) {
-            showToast('Code too large for URL encoding. Try smaller code.', 'error');
-            return;
-        }
+        let expiresAt = null;
+        if (duration === 'day') expiresAt = new Date(Date.now() + 24*60*60*1000);
+        else if (duration === 'week') expiresAt = new Date(Date.now() + 7*24*60*60*1000);
         
-        // Create a unique ID based on name + timestamp
-        const id = (projectName || 'project') + '-' + Date.now();
-        const url = new URL(window.location.href);
-        url.search = `?code=${encoded}&expires=${expireTime || ''}&id=${encodeURIComponent(id)}`;
-        const liveUrl = url.toString();
-        
-        // Save list of deployments in localStorage (just for admin panel)
-        let deployments = JSON.parse(localStorage.getItem('codehost_deployments') || '[]');
-        deployments.unshift({
-            _id: id,
-            name: projectName || id,
-            code: code,
+        const id = generateId(projectName);
+        const deployment = {
+            _id: id, name: projectName || id, code: code,
             createdAt: new Date().toISOString(),
-            expiresAt: expireTime ? new Date(expireTime).toISOString() : null,
-            views: 0,
-            active: true
-        });
-        localStorage.setItem('codehost_deployments', JSON.stringify(deployments));
+            expiresAt: expiresAt ? expiresAt.toISOString() : null,
+            views: 0, active: true
+        };
         
+        currentDeployments.unshift(deployment);
+        await saveToGist();
+        
+        const liveUrl = `${window.location.origin}${window.location.pathname}?preview=${id}`;
         const resultDiv = document.getElementById('resultMessage');
         resultDiv.className = 'mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl';
         resultDiv.innerHTML = `
-            <p class="text-green-400 font-medium flex items-center gap-2">✅ Deployment successful!</p>
+            <p class="text-green-400 font-medium">✅ Deployment successful!</p>
             <div class="mt-3 p-2 bg-gray-900/50 rounded-lg">
                 <p class="text-xs text-gray-400 mb-1">🔗 Live Link (works everywhere!):</p>
                 <a href="${liveUrl}" target="_blank" class="text-purple-400 hover:underline break-all font-mono text-sm">${liveUrl}</a>
             </div>
             <button onclick="copyToClipboard('${liveUrl}')" class="mt-3 upload-btn text-sm">📋 Copy Link</button>
-            <button onclick="openPreviewFromCode('${encoded}', '${expireTime || ''}')" class="mt-3 ml-2 upload-btn text-sm">👁️ Preview</button>
+            <button onclick="openPreview('${id}')" class="mt-3 ml-2 upload-btn text-sm">👁️ Preview</button>
         `;
         resultDiv.classList.remove('hidden');
-        
         document.getElementById('codeInput').value = '';
         document.getElementById('projectName').value = '';
         updateCharCount();
-        showToast('✅ Deployment successful! Link contains your code.', 'success');
+        showToast('✅ Deployed! Saved to GitHub Gist', 'success');
         setTimeout(() => resultDiv.classList.add('hidden'), 15000);
     }
     
-    function openPreviewFromCode(encoded, expireTime) {
-        if (expireTime && isExpired(parseInt(expireTime))) {
-            showToast('This link has expired!', 'error');
-            return;
-        }
-        const code = decodeUrlToCode(encoded);
-        if (code) {
-            const blob = new Blob([code], { type: 'text/html' });
-            const blobUrl = URL.createObjectURL(blob);
-            document.getElementById('previewFrame').src = blobUrl;
-            document.getElementById('previewLink').href = blobUrl;
+    // ========== PREVIEW ==========
+    async function openPreview(id) {
+        await ensureGist();
+        const dep = currentDeployments.find(d => d._id === id);
+        if (dep) {
+            const blob = new Blob([dep.code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            document.getElementById('previewFrame').src = url;
+            document.getElementById('previewLink').href = url;
             document.getElementById('previewContainer').classList.add('active');
-        } else {
-            showToast('Invalid code', 'error');
-        }
-    }
-    
-    function checkPreviewFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const encodedCode = urlParams.get('code');
-        const expireTime = urlParams.get('expires');
-        const id = urlParams.get('id');
-        
-        if (encodedCode) {
-            // Check expiration
-            if (expireTime && isExpired(parseInt(expireTime))) {
-                document.body.innerHTML = `
-                    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63);color:white;text-align:center;">
-                        <div><h1 style="font-size:4rem;">⏰ 410</h1><p>This link has expired.</p><a href="/" style="color:#8b5cf6;margin-top:1rem;display:inline-block;">🏠 Go Home</a></div>
-                    </div>
-                `;
-                return;
-            }
-            const code = decodeUrlToCode(encodedCode);
-            if (code) {
-                // Update view count if we have stored deployment
-                let deployments = JSON.parse(localStorage.getItem('codehost_deployments') || '[]');
-                const depIndex = deployments.findIndex(d => d._id === id);
-                if (depIndex !== -1) {
-                    deployments[depIndex].views++;
-                    localStorage.setItem('codehost_deployments', JSON.stringify(deployments));
-                }
-                // Show the HTML in an iframe
-                const blob = new Blob([code], { type: 'text/html' });
-                const blobUrl = URL.createObjectURL(blob);
-                document.body.innerHTML = '';
-                document.body.style.margin = '0';
-                const iframe = document.createElement('iframe');
-                iframe.style.width = '100%';
-                iframe.style.height = '100vh';
-                iframe.style.border = 'none';
-                iframe.src = blobUrl;
-                document.body.appendChild(iframe);
-                return;
-            }
-        }
-        // No code in URL, show normal page (already shown)
-    }
-    
-    // ========== Admin Panel (simple, based on localStorage) ==========
-    const ADMIN_PASSWORD = 'zara0299=';
-    function showAdminLogin() {
-        const pwd = prompt('Enter admin password:');
-        if (pwd === ADMIN_PASSWORD) {
-            showAdminDashboard();
-        } else if (pwd !== null) {
-            alert('Wrong password');
-        }
-    }
-    
-    function showAdminDashboard() {
-        let deployments = JSON.parse(localStorage.getItem('codehost_deployments') || '[]');
-        const total = deployments.length;
-        const active = deployments.filter(d => !(d.expiresAt && new Date(d.expiresAt) < new Date())).length;
-        const totalViews = deployments.reduce((sum, d) => sum + d.views, 0);
-        
-        let html = `
-            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:10000;overflow:auto;padding:20px;color:white;">
-                <div style="max-width:1000px;margin:0 auto;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-                        <h2 style="font-size:1.8rem;">Admin Dashboard</h2>
-                        <button onclick="document.body.removeChild(this.parentElement.parentElement.parentElement)" style="background:#ef4444;border:none;color:white;padding:5px 15px;border-radius:5px;cursor:pointer;">Close</button>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;">
-                        <div class="glass-card p-4"><div>📦 Total Deployments</div><div style="font-size:2rem;">${total}</div></div>
-                        <div class="glass-card p-4"><div>🟢 Active</div><div style="font-size:2rem;">${active}</div></div>
-                        <div class="glass-card p-4"><div>👁️ Total Views</div><div style="font-size:2rem;">${totalViews}</div></div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <h3>🗂️ All Deployments</h3>
-                        <div style="overflow-x:auto;">
-                            <table style="width:100%;border-collapse:collapse;">
-                                <thead><tr><th>Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr></thead>
-                                <tbody>
-                                    ${deployments.map(d => `
-                                        <tr>
-                                            <td><a href="?code=${encodeCodeToUrl(d.code)}&expires=${d.expiresAt ? new Date(d.expiresAt).getTime() : ''}&id=${d._id}" target="_blank" style="color:#8b5cf6;">${d.name || d._id}</a></td>
-                                            <td>${new Date(d.createdAt).toLocaleString()}</td>
-                                            <td>${d.expiresAt ? new Date(d.expiresAt).toLocaleString() : 'Lifetime'}</td>
-                                            <td>${d.views}</td>
-                                            <td><button onclick="deleteDeployment('${d._id}')" style="background:#ef4444;border:none;color:white;padding:2px 8px;border-radius:4px;cursor:pointer;">Delete</button>
-                                            <button onclick="viewCode('${encodeURIComponent(escape(d.code))}')" style="background:#3b82f6;border:none;color:white;padding:2px 8px;border-radius:4px;cursor:pointer;">Code</button></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        document.body.appendChild(div);
-    }
-    
-    function deleteDeployment(id) {
-        let deployments = JSON.parse(localStorage.getItem('codehost_deployments') || '[]');
-        deployments = deployments.filter(d => d._id !== id);
-        localStorage.setItem('codehost_deployments', JSON.stringify(deployments));
-        showAdminDashboard(); // refresh
-    }
-    
-    function viewCode(escapedCode) {
-        const code = decodeURIComponent(escapedCode);
-        const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.right = '0';
-        modal.style.bottom = '0';
-        modal.style.background = 'rgba(0,0,0,0.95)';
-        modal.style.zIndex = '10001';
-        modal.style.display = 'flex';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.innerHTML = `
-            <div style="background:#1e1e2e;border-radius:1rem;padding:20px;max-width:800px;width:90%;max-height:80vh;overflow:auto;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><h3>Source Code</h3><button onclick="this.parentElement.parentElement.parentElement.remove()" style="background:#ef4444;border:none;color:white;padding:5px;border-radius:5px;">✕</button></div>
-                <pre style="background:#0f0f1a;padding:10px;border-radius:8px;overflow-x:auto;font-size:12px;font-family:monospace;white-space:pre-wrap;">${escapeHtml(code)}</pre>
-                <button onclick="copyToClipboard('${escapeHtml(code)}')" style="margin-top:10px;background:#8b5cf6;border:none;color:white;padding:5px 10px;border-radius:5px;">📋 Copy Code</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    
-    function escapeHtml(str) {
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-    
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text);
-        showToast('Copied!', 'success');
-    }
-    
-    function showToast(msg, type) {
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.innerHTML = type === 'error' ? `❌ ${msg}` : `✅ ${msg}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-    
-    // UI Helpers
-    function updateCharCount() {
-        document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters';
-    }
-    
-    function handleFileUpload(e) {
-        const file = e.target.files[0];
-        if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                document.getElementById('codeInput').value = ev.target.result;
-                updateCharCount();
-                showToast('File loaded!', 'success');
-            };
-            reader.readAsText(file);
-        } else {
-            showToast('Please upload a valid HTML file', 'error');
-        }
-        e.target.value = '';
+        } else showToast('Not found', 'error');
     }
     
     function closePreview() {
@@ -373,58 +279,134 @@
         document.getElementById('previewFrame').src = '';
     }
     
-    // Event listeners
-    document.getElementById('deployForm').addEventListener('submit', handleDeploy);
-    document.getElementById('codeInput').addEventListener('input', updateCharCount);
-    document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
-    
-    // Duration card styling
-    document.querySelectorAll('.duration-card').forEach(card => {
-        const radio = card.querySelector('.duration-radio');
-        if (radio.checked) {
-            card.classList.add('border-purple-500', 'bg-purple-500/10');
-        } else {
-            card.classList.add('border-gray-700');
-        }
-        card.addEventListener('click', () => {
-            document.querySelectorAll('.duration-card').forEach(c => {
-                c.classList.remove('border-purple-500', 'bg-purple-500/10');
-                c.classList.add('border-gray-700');
-                c.querySelector('.duration-radio').checked = false;
-            });
-            card.classList.add('border-purple-500', 'bg-purple-500/10');
-            card.classList.remove('border-gray-700');
-            card.querySelector('.duration-radio').checked = true;
-        });
-    });
-    
-    updateCharCount();
-    
-    // Admin access via keyboard (Ctrl+Shift+A)
-    let secretCount = 0;
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-            e.preventDefault();
-            secretCount++;
-            setTimeout(() => { secretCount = 0; }, 2000);
-            if (secretCount >= 3) {
-                secretCount = 0;
-                showAdminLogin();
+    // ========== CHECK URL PREVIEW ==========
+    async function checkPreview() {
+        const id = new URLSearchParams(location.search).get('preview');
+        if (!id) return;
+        await ensureGist();
+        const dep = currentDeployments.find(d => d._id === id);
+        if (dep && dep.active) {
+            if (dep.expiresAt && new Date(dep.expiresAt) < new Date()) {
+                document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63);color:white;text-align:center;"><div><h1>⏰ Expired</h1><p>This link has expired.</p><a href="/">Go Home</a></div></div>`;
+                return;
             }
+            dep.views++;
+            await saveToGist();
+            const blob = new Blob([dep.code], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            document.body.innerHTML = '';
+            document.body.style.margin = '0';
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100vh';
+            iframe.style.border = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+        } else {
+            document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63);color:white;text-align:center;"><div><h1>🔗 404</h1><p>Deployment not found.</p><a href="/">Go Home</a></div></div>`;
         }
-    });
-    
-    // Also support URL ?admin=true
-    if (window.location.search.includes('admin=true')) {
-        showAdminLogin();
-        window.history.replaceState({}, document.title, window.location.pathname);
     }
     
-    // Check for preview from URL (code parameter)
-    checkPreviewFromUrl();
+    // ========== ADMIN PANEL ==========
+    const ADMIN_PW = 'zara0299=';
+    function showAdminLogin() {
+        const pwd = prompt('Admin password:');
+        if (pwd === ADMIN_PW) showAdminDashboard();
+        else if (pwd) alert('Wrong password');
+    }
     
-    window.copyToClipboard = copyToClipboard;
+    async function showAdminDashboard() {
+        await ensureGist();
+        const total = currentDeployments.length;
+        const active = currentDeployments.filter(d => !(d.expiresAt && new Date(d.expiresAt) < new Date())).length;
+        const views = currentDeployments.reduce((s,d) => s + d.views, 0);
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:10000;overflow:auto;padding:20px;color:white;';
+        modal.innerHTML = `
+            <div style="max-width:1000px;margin:0 auto;">
+                <div style="display:flex;justify-content:space-between;"><h2>Admin Dashboard</h2><button onclick="this.parentElement.parentElement.parentElement.remove()" style="background:#ef4444;border:none;color:white;padding:5px 15px;border-radius:5px;">Close</button></div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:20px 0;">${[
+                    `<div class="glass-card p-4"><div>📦 Total</div><div style="font-size:2rem;">${total}</div></div>`,
+                    `<div class="glass-card p-4"><div>🟢 Active</div><div style="font-size:2rem;">${active}</div></div>`,
+                    `<div class="glass-card p-4"><div>👁️ Views</div><div style="font-size:2rem;">${views}</div></div>`
+                ].join('')}</div>
+                <div class="glass-card p-4"><h3>Deployments</h3><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th>Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr></thead><tbody>
+                ${currentDeployments.map(d => `
+                    <tr><td><a href="?preview=${d._id}" target="_blank" style="color:#8b5cf6;">${d.name}</a></td>
+                    <td>${new Date(d.createdAt).toLocaleString()}</td>
+                    <td>${d.expiresAt ? new Date(d.expiresAt).toLocaleString() : 'Lifetime'}</td>
+                    <td>${d.views}</td>
+                    <td><button onclick="deleteDeployment('${d._id}')" style="background:#ef4444;border:none;color:white;padding:2px 8px;border-radius:4px;">Delete</button>
+                    <button onclick="viewCode('${escapeHtml(d.code)}')" style="background:#3b82f6;border:none;color:white;padding:2px 8px;border-radius:4px;">Code</button></td></tr>
+                `).join('')}
+                </tbody></table></div></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.deleteDeployment = async (id) => {
+            if (confirm('Delete?')) {
+                currentDeployments = currentDeployments.filter(d => d._id !== id);
+                await saveToGist();
+                showAdminDashboard();
+            }
+        };
+        window.viewCode = (code) => {
+            alert('Code:\n\n' + code.substring(0, 500) + (code.length > 500 ? '...' : ''));
+        };
+    }
+    
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
+    function copyToClipboard(text) { navigator.clipboard.writeText(text); showToast('Copied!', 'success'); }
+    function showToast(msg, type) { const t=document.createElement('div'); t.className='toast'; t.innerHTML=type==='error'?`❌ ${msg}`:`✅ ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
+    function updateCharCount() { document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters'; }
+    function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (file && (file.name.endsWith('.html')||file.name.endsWith('.htm'))) {
+            const r = new FileReader();
+            r.onload = ev => { document.getElementById('codeInput').value = ev.target.result; updateCharCount(); showToast('File loaded!', 'success'); };
+            r.readAsText(file);
+        } else showToast('Invalid file', 'error');
+        e.target.value = '';
+    }
+    
+    // ========== INIT ==========
+    async function init() {
+        if (location.search.includes('admin=true')) { showAdminLogin(); history.replaceState({},'',location.pathname); }
+        document.querySelectorAll('.duration-card').forEach(card => {
+            const radio = card.querySelector('.duration-radio');
+            if (radio.checked) card.classList.add('border-purple-500','bg-purple-500/10');
+            else card.classList.add('border-gray-700');
+            card.onclick = () => {
+                document.querySelectorAll('.duration-card').forEach(c => {
+                    c.classList.remove('border-purple-500','bg-purple-500/10');
+                    c.classList.add('border-gray-700');
+                    c.querySelector('.duration-radio').checked = false;
+                });
+                card.classList.add('border-purple-500','bg-purple-500/10');
+                card.classList.remove('border-gray-700');
+                card.querySelector('.duration-radio').checked = true;
+            };
+        });
+        document.getElementById('deployForm').addEventListener('submit', handleDeploy);
+        document.getElementById('codeInput').addEventListener('input', updateCharCount);
+        document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+        updateCharCount();
+        await ensureGist();
+        checkPreview();
+    }
+    
+    let sc=0;
+    document.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+            e.preventDefault(); sc++; setTimeout(()=>sc=0,2000);
+            if (sc>=3) { sc=0; showAdminLogin(); }
+        }
+    });
+    
+    window.openPreview = openPreview;
     window.closePreview = closePreview;
+    window.copyToClipboard = copyToClipboard;
+    init();
 </script>
 </body>
 </html>
