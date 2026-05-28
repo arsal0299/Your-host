@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Same styles as before (kept for brevity) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; }
         .glass-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
@@ -146,16 +145,15 @@
     </div>
 
     <script>
-        // ========== YOUR JSONBIN CREDENTIALS (FIXED) ==========
+        // ========== YOUR JSONBIN CREDENTIALS ==========
         const JSONBIN_API_KEY = '$2a$10$9fToJwKFk6p88WYSptgpyu1TvKDQuWyy2K.bqilDR83XmmXKPUDi6';
         const JSONBIN_BIN_ID = '6a17faa021f9ee59d2946948';
         const ADMIN_PASSWORD = 'zara0299=';
         
         let currentDeployments = [];
-        let lastSync = 0;
         
-        // ========== CLOUD SYNC (FIXED) ==========
-        async function syncFromCloud() {
+        // ========== CLOUD FUNCTIONS (ALWAYS FETCH LATEST) ==========
+        async function loadFromCloud() {
             try {
                 const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
                     headers: { 'X-Master-Key': JSONBIN_API_KEY }
@@ -164,34 +162,32 @@
                 const data = await response.json();
                 if (data.record && data.record.deployments) {
                     currentDeployments = data.record.deployments;
-                    // Save to localStorage as cache
-                    localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
-                    console.log('✅ Synced from cloud:', currentDeployments.length, 'deployments');
                 } else {
-                    // Initialize empty bin
                     currentDeployments = [];
-                    await saveToCloud();
                 }
-                checkExpiredDeployments();
+                // Filter expired
+                const now = new Date();
+                let changed = false;
+                currentDeployments = currentDeployments.filter(d => {
+                    if (d.expiresAt && new Date(d.expiresAt) < now) {
+                        changed = true;
+                        return false;
+                    }
+                    return true;
+                });
+                if (changed) await saveToCloud();
+                console.log('✅ Loaded from cloud:', currentDeployments.length);
+                return true;
             } catch (err) {
-                console.warn('Cloud sync failed, using localStorage cache', err);
-                const cached = localStorage.getItem('codehost_deployments');
-                if (cached) {
-                    currentDeployments = JSON.parse(cached);
-                } else {
-                    currentDeployments = [];
-                }
-                checkExpiredDeployments();
+                console.error('Cloud load error:', err);
+                return false;
             }
         }
         
         async function saveToCloud() {
             try {
-                // First update localStorage cache
-                localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
-                // Then push to JSONBin
                 const dataToStore = { deployments: currentDeployments, lastUpdated: new Date().toISOString() };
-                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -199,29 +195,17 @@
                     },
                     body: JSON.stringify(dataToStore)
                 });
-                if (!response.ok) throw new Error('Cloud save failed');
                 console.log('✅ Saved to cloud');
-            } catch (err) {
-                console.warn('Cloud save failed, data saved only locally', err);
-            }
-        }
-        
-        function checkExpiredDeployments() {
-            const now = new Date();
-            let changed = false;
-            currentDeployments = currentDeployments.filter(dep => {
-                if (dep.expiresAt && new Date(dep.expiresAt) < now) {
-                    changed = true;
-                    return false;
-                }
                 return true;
-            });
-            if (changed) saveToCloud();
+            } catch (err) {
+                console.error('Cloud save error:', err);
+                return false;
+            }
         }
         
         // ========== INIT ==========
         async function init() {
-            await syncFromCloud();
+            await loadFromCloud();
             
             document.getElementById('deployForm').addEventListener('submit', handleDeploy);
             document.getElementById('codeInput').addEventListener('input', updateCharCount);
@@ -248,7 +232,7 @@
             });
             updateCharCount();
             
-            // Admin access
+            // Admin access via URL
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('admin') === 'true') {
                 showAdminLogin();
@@ -341,7 +325,7 @@
             e.target.value = '';
         }
         
-        // ========== PREVIEW (FIXED) ==========
+        // ========== PREVIEW FUNCTIONS ==========
         function openPreview(id) {
             const deployment = currentDeployments.find(d => d._id === id);
             if (deployment) {
@@ -358,14 +342,14 @@
             document.getElementById('previewFrame').src = '';
         }
         
-        // ========== CHECK PREVIEW FROM URL (WORKS GLOBALLY) ==========
+        // ========== CHECK PREVIEW FROM URL (THE FIX) ==========
         async function checkPreview() {
             const urlParams = new URLSearchParams(window.location.search);
             const previewId = urlParams.get('preview');
             
             if (previewId) {
-                // Ensure we have latest data from cloud
-                await syncFromCloud();
+                // First, load the latest data from cloud
+                await loadFromCloud();
                 
                 const deployment = currentDeployments.find(d => d._id === previewId);
                 if (deployment && deployment.active) {
@@ -404,10 +388,7 @@
                         <p>${message}</p>
                         ${id ? `<p style="font-size:0.8rem;margin-top:0.5rem;color:#aaa;">ID: ${id}</p>` : ''}
                         <a href="/" style="color:#8b5cf6;margin-top:1rem;display:inline-block;">🏠 Go Home</a>
-                        <button onclick="localStorage.clear();location.href='/'"
-                                style="margin-top:1rem;margin-left:1rem;background:#8b5cf6;border:none;padding:5px 15px;border-radius:5px;cursor:pointer;color:white;">
-                            🔄 Reset Cache
-                        </button>
+                        <button onclick="location.reload()" style="margin-top:1rem;margin-left:1rem;background:#8b5cf6;border:none;padding:5px 15px;border-radius:5px;cursor:pointer;color:white;">🔄 Retry</button>
                     </div>
                 </div>
             `;
@@ -446,9 +427,10 @@
             document.getElementById('adminModal').classList.remove('active');
         }
         
-        function adminLogin() {
+        async function adminLogin() {
             const password = document.getElementById('adminPassword').value;
             if (password === ADMIN_PASSWORD) {
+                await loadFromCloud(); // ensure fresh data
                 closeAdminModal();
                 loadDashboard();
                 document.getElementById('dashboardModal').classList.add('active');
@@ -523,7 +505,7 @@
             setTimeout(() => toast.remove(), 3000);
         }
         
-        // Global functions for onclick
+        // Global functions
         window.copyToClipboard = function(text) {
             navigator.clipboard.writeText(text);
             showToast('Link copied!', 'success');
@@ -550,7 +532,7 @@
             }
         });
         
-        // Start
+        // Start everything
         init();
         checkPreview();
     </script>
