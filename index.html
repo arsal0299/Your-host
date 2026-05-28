@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>CodeHost – Cloud HTML Deployer (Globally Working)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Same styles as before (kept for brevity) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); min-height: 100vh; }
+        .glass-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
+        .btn-primary { background: linear-gradient(135deg, #8b5cf6, #ec4899); transition: all 0.3s ease; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4); }
+        .code-editor { background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(139, 92, 246, 0.3); transition: all 0.3s; }
+        .code-editor:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); outline: none; }
+        .upload-btn { background: rgba(139, 92, 246, 0.2); border: 1px solid rgba(139, 92, 246, 0.4); padding: 8px 16px; border-radius: 40px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; }
+        .upload-btn:hover { background: rgba(139, 92, 246, 0.35); border-color: #8b5cf6; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 50px; font-size: 0.875rem; z-index: 1000; animation: slideUp 0.3s ease; border: 1px solid #8b5cf6; }
+        @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(30px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(8px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: #1e1e2e; border-radius: 1.5rem; padding: 2rem; max-width: 500px; width: 90%; border: 1px solid rgba(139, 92, 246, 0.3); }
+        .admin-table { width: 100%; border-collapse: collapse; }
+        .admin-table th, .admin-table td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .admin-table tr:hover { background: rgba(255, 255, 255, 0.05); }
+        .preview-frame { width: 100%; height: 100vh; border: none; background: white; }
+        .preview-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 2000; background: white; display: none; }
+        .preview-container.active { display: block; }
+        .preview-header { background: #1e1e2e; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .preview-header a { color: #8b5cf6; text-decoration: none; }
+        .close-preview { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        .view-code-btn { background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 5px; cursor: pointer; }
+        .view-code-btn:hover { background: #2563eb; }
+        .code-preview-modal { max-width: 800px !important; max-height: 80vh; overflow: auto; }
+        .code-preview-modal pre { background: #0f0f1a; padding: 15px; border-radius: 10px; overflow-x: auto; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+        .admin-access-note { font-size: 10px; color: #4a4a6a; margin-top: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="mainContent" class="container mx-auto px-4 py-8 max-w-5xl">
+        <div class="text-center mb-10">
+            <div class="inline-block p-3 bg-purple-500/20 rounded-2xl mb-4"><span class="text-5xl">🚀</span></div>
+            <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">CodeHost</h1>
+            <p class="text-gray-300 mt-3 text-lg max-w-2xl mx-auto">Cloud-based HTML deployment. Works on any device, incognito, everywhere!</p>
+        </div>
+
+        <div class="glass-card p-6 md:p-8 mb-8">
+            <form id="deployForm">
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">🏷️ Project Name (Optional)</label>
+                    <input type="text" id="projectName" class="code-editor w-full p-3 rounded-xl text-gray-200 text-sm" placeholder="my-awesome-project" autocomplete="off">
+                </div>
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">📝 HTML / CSS / JavaScript Code</label>
+                    <textarea id="codeInput" rows="12" class="code-editor w-full p-4 rounded-xl text-gray-200 font-mono text-sm resize-none" placeholder='Paste your HTML code here...'></textarea>
+                    <div class="flex justify-between items-center mt-3">
+                        <label class="upload-btn cursor-pointer">📂 Choose HTML File<input type="file" id="fileUpload" accept=".html,.htm" class="hidden" /></label>
+                        <span id="charCount" class="text-xs text-gray-500">0 characters</span>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-3">⏳ Expiration Time</label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="day">
+                            <input type="radio" name="duration" value="day" class="hidden duration-radio" checked>
+                            <div class="text-center"><div class="text-2xl mb-1">🌙</div><div class="font-semibold">1 Day</div><div class="text-xs text-gray-500 mt-1">Auto-deletes after 24 hours</div></div>
+                        </label>
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="week">
+                            <input type="radio" name="duration" value="week" class="hidden duration-radio">
+                            <div class="text-center"><div class="text-2xl mb-1">📅</div><div class="font-semibold">1 Week</div><div class="text-xs text-gray-500 mt-1">Auto-deletes after 7 days</div></div>
+                        </label>
+                        <label class="flex-1 cursor-pointer p-4 rounded-xl border-2 transition-all duration-card" data-duration="lifetime">
+                            <input type="radio" name="duration" value="lifetime" class="hidden duration-radio">
+                            <div class="text-center"><div class="text-2xl mb-1">∞</div><div class="font-semibold">Lifetime</div><div class="text-xs text-gray-500 mt-1">Never expires</div></div>
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" id="deployBtn" class="btn-primary w-full py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2">
+                    <span>🚀</span> Deploy Now <span>⚡</span>
+                </button>
+            </form>
+            <div id="resultMessage" class="mt-6 hidden"></div>
+        </div>
+
+        <div class="text-center text-gray-500 text-sm">
+            <p>✨ Cloud Storage • Works on Any Device • Incognito Mode Supported ✨</p>
+            <p class="mt-2 text-xs">Created by <span class="text-purple-400">Mr. Arslan</span></p>
+        </div>
+    </div>
+
+    <!-- Preview Container -->
+    <div id="previewContainer" class="preview-container">
+        <div class="preview-header">
+            <a href="#" id="previewLink" target="_blank">🔗 Open in New Tab</a>
+            <button class="close-preview" onclick="closePreview()">✕</button>
+        </div>
+        <iframe id="previewFrame" class="preview-frame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"></iframe>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-center mb-6"><div class="text-4xl mb-2">🔐</div><h2 class="text-2xl font-bold">Admin Login</h2><p class="text-gray-400 text-sm mt-1">Enter password</p></div>
+            <input type="password" id="adminPassword" placeholder="Password" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:ring-2 focus:ring-purple-500 mb-4">
+            <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-xl font-semibold">Login →</button>
+            <button onclick="closeAdminModal()" class="w-full mt-3 text-gray-400 hover:text-white text-sm">Cancel</button>
+            <div class="admin-access-note">🔒 Admin access: add ?admin=true to URL</div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="dashboardModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1000px; max-height: 80vh; overflow-y: auto;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Admin Dashboard</h2>
+                <button onclick="closeDashboard()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="statsCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"></div>
+            <div class="glass-card p-4">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
+                    <h3 class="font-semibold">🗂️ All Deployments</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="searchDeployments" placeholder="Search..." class="bg-gray-800 border border-gray-700 rounded-xl px-3 py-1.5 text-sm">
+                        <button onclick="loadDeployments()" class="bg-purple-600/20 hover:bg-purple-600/30 px-4 py-1.5 rounded-xl text-sm transition">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Name</th><th>Created</th><th>Expires</th><th>Views</th><th>Actions</th></tr></thead><tbody id="deploymentsList"></tbody></table></div>
+                <div id="noDeployments" class="text-center py-8 text-gray-500 hidden">No deployments found</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Code Modal -->
+    <div id="codeViewModal" class="modal-overlay">
+        <div class="modal-content code-preview-modal">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">📄 Source Code</h3>
+                <button onclick="closeCodeView()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <pre id="codeViewContent"></pre>
+            <button onclick="copyCodeToClipboard()" class="mt-4 upload-btn w-full justify-center">📋 Copy Code</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== YOUR JSONBIN CREDENTIALS (FIXED) ==========
+        const JSONBIN_API_KEY = '$2a$10$9fToJwKFk6p88WYSptgpyu1TvKDQuWyy2K.bqilDR83XmmXKPUDi6';
+        const JSONBIN_BIN_ID = '6a17faa021f9ee59d2946948';
+        const ADMIN_PASSWORD = 'zara0299=';
+        
+        let currentDeployments = [];
+        let lastSync = 0;
+        
+        // ========== CLOUD SYNC (FIXED) ==========
+        async function syncFromCloud() {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': JSONBIN_API_KEY }
+                });
+                if (!response.ok) throw new Error('Cloud fetch failed');
+                const data = await response.json();
+                if (data.record && data.record.deployments) {
+                    currentDeployments = data.record.deployments;
+                    // Save to localStorage as cache
+                    localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
+                    console.log('✅ Synced from cloud:', currentDeployments.length, 'deployments');
+                } else {
+                    // Initialize empty bin
+                    currentDeployments = [];
+                    await saveToCloud();
+                }
+                checkExpiredDeployments();
+            } catch (err) {
+                console.warn('Cloud sync failed, using localStorage cache', err);
+                const cached = localStorage.getItem('codehost_deployments');
+                if (cached) {
+                    currentDeployments = JSON.parse(cached);
+                } else {
+                    currentDeployments = [];
+                }
+                checkExpiredDeployments();
+            }
+        }
+        
+        async function saveToCloud() {
+            try {
+                // First update localStorage cache
+                localStorage.setItem('codehost_deployments', JSON.stringify(currentDeployments));
+                // Then push to JSONBin
+                const dataToStore = { deployments: currentDeployments, lastUpdated: new Date().toISOString() };
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY
+                    },
+                    body: JSON.stringify(dataToStore)
+                });
+                if (!response.ok) throw new Error('Cloud save failed');
+                console.log('✅ Saved to cloud');
+            } catch (err) {
+                console.warn('Cloud save failed, data saved only locally', err);
+            }
+        }
+        
+        function checkExpiredDeployments() {
+            const now = new Date();
+            let changed = false;
+            currentDeployments = currentDeployments.filter(dep => {
+                if (dep.expiresAt && new Date(dep.expiresAt) < now) {
+                    changed = true;
+                    return false;
+                }
+                return true;
+            });
+            if (changed) saveToCloud();
+        }
+        
+        // ========== INIT ==========
+        async function init() {
+            await syncFromCloud();
+            
+            document.getElementById('deployForm').addEventListener('submit', handleDeploy);
+            document.getElementById('codeInput').addEventListener('input', updateCharCount);
+            document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+            
+            // Duration card styling
+            document.querySelectorAll('.duration-card').forEach(card => {
+                const radio = card.querySelector('.duration-radio');
+                if (radio.checked) {
+                    card.classList.add('border-purple-500', 'bg-purple-500/10');
+                } else {
+                    card.classList.add('border-gray-700');
+                }
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.duration-card').forEach(c => {
+                        c.classList.remove('border-purple-500', 'bg-purple-500/10');
+                        c.classList.add('border-gray-700');
+                        c.querySelector('.duration-radio').checked = false;
+                    });
+                    card.classList.add('border-purple-500', 'bg-purple-500/10');
+                    card.classList.remove('border-gray-700');
+                    card.querySelector('.duration-radio').checked = true;
+                });
+            });
+            updateCharCount();
+            
+            // Admin access
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('admin') === 'true') {
+                showAdminLogin();
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+        
+        function generateId(projectName) {
+            if (projectName && projectName.trim()) {
+                let cleanName = projectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+                cleanName = cleanName.replace(/^-|-$/g, '');
+                if (cleanName.length > 30) cleanName = cleanName.substring(0, 30);
+                return cleanName + '-' + Date.now().toString(36);
+            }
+            return 'proj-' + Date.now().toString(36);
+        }
+        
+        async function handleDeploy(e) {
+            e.preventDefault();
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) {
+                showToast('Please enter HTML code!', 'error');
+                return;
+            }
+            
+            const projectName = document.getElementById('projectName').value.trim();
+            const durationRadio = document.querySelector('input[name="duration"]:checked');
+            const duration = durationRadio ? durationRadio.value : 'day';
+            
+            let expiresAt = null;
+            if (duration === 'day') {
+                expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            } else if (duration === 'week') {
+                expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            }
+            
+            const id = generateId(projectName);
+            const deployment = {
+                _id: id,
+                name: projectName || id,
+                code: code,
+                createdAt: new Date().toISOString(),
+                expiresAt: expiresAt ? expiresAt.toISOString() : null,
+                views: 0,
+                active: true
+            };
+            
+            currentDeployments.unshift(deployment);
+            await saveToCloud();
+            
+            const liveUrl = `${window.location.origin}${window.location.pathname}?preview=${id}`;
+            
+            const resultDiv = document.getElementById('resultMessage');
+            resultDiv.className = 'mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl';
+            resultDiv.innerHTML = `
+                <p class="text-green-400 font-medium flex items-center gap-2">✅ Deployment successful!</p>
+                <div class="mt-3 p-2 bg-gray-900/50 rounded-lg">
+                    <p class="text-xs text-gray-400 mb-1">🔗 Live Link (works everywhere!):</p>
+                    <a href="${liveUrl}" target="_blank" class="text-purple-400 hover:underline break-all font-mono text-sm">${liveUrl}</a>
+                </div>
+                <button onclick="copyToClipboard('${liveUrl}')" class="mt-3 upload-btn text-sm">📋 Copy Link</button>
+                <button onclick="openPreview('${id}')" class="mt-3 ml-2 upload-btn text-sm">👁️ Preview</button>
+            `;
+            resultDiv.classList.remove('hidden');
+            
+            document.getElementById('codeInput').value = '';
+            document.getElementById('projectName').value = '';
+            updateCharCount();
+            showToast('✅ Deployment successful! Cloud saved!', 'success');
+            setTimeout(() => resultDiv.classList.add('hidden'), 15000);
+        }
+        
+        function updateCharCount() {
+            document.getElementById('charCount').textContent = document.getElementById('codeInput').value.length + ' characters';
+        }
+        
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('codeInput').value = ev.target.result;
+                    updateCharCount();
+                    showToast('File loaded successfully!', 'success');
+                };
+                reader.readAsText(file);
+            } else {
+                showToast('Please upload a valid HTML file', 'error');
+            }
+            e.target.value = '';
+        }
+        
+        // ========== PREVIEW (FIXED) ==========
+        function openPreview(id) {
+            const deployment = currentDeployments.find(d => d._id === id);
+            if (deployment) {
+                const blob = new Blob([deployment.code], { type: 'text/html' });
+                const blobUrl = URL.createObjectURL(blob);
+                document.getElementById('previewFrame').src = blobUrl;
+                document.getElementById('previewLink').href = blobUrl;
+                document.getElementById('previewContainer').classList.add('active');
+            }
+        }
+        
+        function closePreview() {
+            document.getElementById('previewContainer').classList.remove('active');
+            document.getElementById('previewFrame').src = '';
+        }
+        
+        // ========== CHECK PREVIEW FROM URL (WORKS GLOBALLY) ==========
+        async function checkPreview() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const previewId = urlParams.get('preview');
+            
+            if (previewId) {
+                // Ensure we have latest data from cloud
+                await syncFromCloud();
+                
+                const deployment = currentDeployments.find(d => d._id === previewId);
+                if (deployment && deployment.active) {
+                    if (deployment.expiresAt && new Date(deployment.expiresAt) < new Date()) {
+                        showErrorPage('This link has expired.', previewId);
+                        return;
+                    }
+                    // Increment view
+                    deployment.views++;
+                    await saveToCloud();
+                    
+                    const blob = new Blob([deployment.code], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    document.body.innerHTML = '';
+                    document.body.style.margin = '0';
+                    document.body.style.padding = '0';
+                    const iframe = document.createElement('iframe');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100vh';
+                    iframe.style.border = 'none';
+                    iframe.src = blobUrl;
+                    document.body.appendChild(iframe);
+                    return;
+                } else {
+                    showErrorPage('Deployment not found. It may have expired or been deleted.', previewId);
+                    return;
+                }
+            }
+        }
+        
+        function showErrorPage(message, id) {
+            document.body.innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63);color:white;font-family:sans-serif;text-align:center;padding:20px;">
+                    <div>
+                        <h1 style="font-size:4rem;margin-bottom:1rem;">🔗 404</h1>
+                        <p>${message}</p>
+                        ${id ? `<p style="font-size:0.8rem;margin-top:0.5rem;color:#aaa;">ID: ${id}</p>` : ''}
+                        <a href="/" style="color:#8b5cf6;margin-top:1rem;display:inline-block;">🏠 Go Home</a>
+                        <button onclick="localStorage.clear();location.href='/'"
+                                style="margin-top:1rem;margin-left:1rem;background:#8b5cf6;border:none;padding:5px 15px;border-radius:5px;cursor:pointer;color:white;">
+                            🔄 Reset Cache
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ========== VIEW CODE ==========
+        let currentViewingCode = '';
+        function viewCode(id) {
+            const deployment = currentDeployments.find(d => d._id === id);
+            if (deployment) {
+                currentViewingCode = deployment.code;
+                document.getElementById('codeViewContent').textContent = deployment.code;
+                document.getElementById('codeViewModal').classList.add('active');
+            }
+        }
+        
+        function closeCodeView() {
+            document.getElementById('codeViewModal').classList.remove('active');
+            currentViewingCode = '';
+        }
+        
+        function copyCodeToClipboard() {
+            if (currentViewingCode) {
+                navigator.clipboard.writeText(currentViewingCode);
+                showToast('Code copied to clipboard!', 'success');
+            }
+        }
+        
+        // ========== ADMIN FUNCTIONS ==========
+        function showAdminLogin() {
+            document.getElementById('adminModal').classList.add('active');
+            document.getElementById('adminPassword').value = '';
+        }
+        
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.remove('active');
+        }
+        
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                closeAdminModal();
+                loadDashboard();
+                document.getElementById('dashboardModal').classList.add('active');
+            } else {
+                showToast('Wrong password!', 'error');
+            }
+        }
+        
+        function closeDashboard() {
+            document.getElementById('dashboardModal').classList.remove('active');
+        }
+        
+        function loadDashboard() {
+            const total = currentDeployments.length;
+            const active = currentDeployments.filter(d => {
+                if (d.expiresAt && new Date(d.expiresAt) < new Date()) return false;
+                return true;
+            }).length;
+            const totalViews = currentDeployments.reduce((sum, d) => sum + d.views, 0);
+            
+            document.getElementById('statsCards').innerHTML = `
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">📦</div><div><p class="text-gray-400 text-sm">Total</p><p class="text-3xl font-bold">${total}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">🟢</div><div><p class="text-gray-400 text-sm">Active</p><p class="text-3xl font-bold">${active}</p></div></div></div>
+                <div class="glass-card p-4"><div class="flex items-center gap-3"><div class="text-3xl">👁️</div><div><p class="text-gray-400 text-sm">Total Views</p><p class="text-3xl font-bold">${totalViews}</p></div></div></div>
+            `;
+            loadDeployments();
+        }
+        
+        function loadDeployments() {
+            const searchTerm = document.getElementById('searchDeployments').value.toLowerCase();
+            let filtered = [...currentDeployments];
+            if (searchTerm) {
+                filtered = filtered.filter(d => d._id.toLowerCase().includes(searchTerm) || (d.name && d.name.toLowerCase().includes(searchTerm)));
+            }
+            const tbody = document.getElementById('deploymentsList');
+            const noDeployments = document.getElementById('noDeployments');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                noDeployments.classList.remove('hidden');
+                return;
+            }
+            noDeployments.classList.add('hidden');
+            tbody.innerHTML = filtered.map(d => `
+                <tr>
+                    <td><a href="?preview=${d._id}" target="_blank" class="text-purple-400 hover:underline font-mono text-xs">${d.name || d._id}</a>
+                        <button onclick="viewCode('${d._id}')" class="view-code-btn" title="View Source Code">📄 Code</button>
+                    </td>
+                    <td class="text-gray-300 text-sm">${new Date(d.createdAt).toLocaleString()}</td>
+                    <td class="text-gray-300 text-sm">${d.expiresAt ? new Date(d.expiresAt).toLocaleString() : 'Lifetime'}</td>
+                    <td>${d.views}</td>
+                    <td><button onclick="deleteDeployment('${d._id}')" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1 rounded-lg text-xs">Delete</button></td>
+                </tr>
+            `).join('');
+        }
+        
+        async function deleteDeployment(id) {
+            if (confirm('Delete this deployment permanently?')) {
+                currentDeployments = currentDeployments.filter(d => d._id !== id);
+                await saveToCloud();
+                loadDashboard();
+                showToast('Deployment deleted', 'success');
+            }
+        }
+        
+        function showToast(msg, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = type === 'error' ? `❌ ${msg}` : `✅ ${msg}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Global functions for onclick
+        window.copyToClipboard = function(text) {
+            navigator.clipboard.writeText(text);
+            showToast('Link copied!', 'success');
+        };
+        window.openPreview = openPreview;
+        window.closePreview = closePreview;
+        window.viewCode = viewCode;
+        window.closeCodeView = closeCodeView;
+        window.copyCodeToClipboard = copyCodeToClipboard;
+        window.showAdminLogin = showAdminLogin;
+        
+        // Secret admin access
+        window.showAdminSecret = function() { showAdminLogin(); };
+        let secretCount = 0;
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                e.preventDefault();
+                secretCount++;
+                setTimeout(() => { secretCount = 0; }, 2000);
+                if (secretCount >= 3) {
+                    secretCount = 0;
+                    showAdminLogin();
+                }
+            }
+        });
+        
+        // Start
+        init();
+        checkPreview();
+    </script>
+</body>
+</html>
